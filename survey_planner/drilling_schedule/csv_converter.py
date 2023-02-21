@@ -1,7 +1,7 @@
 import csv
 from datetime import datetime
 
-from models import Operation, Pad, Rig, Well
+from drilling_schedule import models
 
 
 class CSVToInstance:
@@ -20,74 +20,67 @@ class CSVToInstance:
             'Ввод скважины (БС)', 'Вызов притока (БС)',
             'Вызов притока, очистка ПЗП', 'ГНКТ', 'ГРП',
         ),
-        RIG_PAD_HEADER: ('FRAC', 'Mile', 'WFIS', 'WS')
+        RIG_PAD_HEADER: ('FRAC', 'Mile', 'WFIS', 'WS'),
     }
 
-    def __open_csv__(self):
-        with open(self.imported_schedule.path, 'r') as file:
-            return csv.reader(file)
-
-    def __get_header_row__(self, csv_reader):
-        return next(csv_reader)
-
-    def __make_mapper__(self, csv_reader):
-        mapper: dict = {}
-        header_row_from_csv = self.__get_header_row__(csv_reader)
-        target_headers = [
-            header for header in dir(self) if header.endswith('_HEADER')
-        ]
-        for header in target_headers:
-            position_of_header = header_row_from_csv.index(header)
-            mapper[header] = position_of_header
-        return mapper
-
-    def __filter_row__(self, row, mapper):
+    def __filter_rows__(self, row: list[str]) -> bool:
         for column in self.EXCESSIVE_ROWS:
-            for value in column:
-                return row[mapper[column]].startswith(value)
+            if (row[column].startswith(self.EXCESSIVE_ROWS[column]) or
+                    row[self.RIG_PAD_HEADER] == ''):
+                return True
+        if row[self.AIM_HEADER] == '':
+            return True
+        if '.' not in row[self.RIG_PAD_HEADER]:
+            return True
+        return False
 
-    def __row_to_instances__(self, mapper, csv_reader):
-        next(csv_reader)
+    def __format_meters_drilled__(self, meters_drilled: str) -> float:
+        if meters_drilled == '':
+            meters_drilled = '0.0'
+        meters_drilled = float(meters_drilled.replace(',', '.'))
+        return meters_drilled
+
+    def __row_to_instances__(self, csv_reader: csv.DictReader) -> None:
         for row in csv_reader:
-            if (self.__filter_row__(mapper, row) or
-                    row[mapper[self.RIG_PAD_HEADER]] == ''):
-                pass
+            if self.__filter_rows__(row):
+                continue
+            row[self.METERS_DRILLED_HEADER] = self.__format_meters_drilled__(
+                row[self.METERS_DRILLED_HEADER]
+            )
 
-            rig_name, pad_name = row[mapper[self.RIG_PAD_HEADER]].split('.')
-            rig, created = Rig.objects.get_or_create(
+            rig_name, pad_name = row[self.RIG_PAD_HEADER].split('.')
+            rig, created = models.Rig.objects.get_or_create(
                 name=rig_name, drilling_schedule=self,
             )
             if created:
                 rig.save()
 
-            pad, created = Pad.objects.get_or_create(
+            pad, created = models.Pad.objects.get_or_create(
                 name=pad_name, drilling_schedule=self,
             )
             if created:
                 pad.save()
 
-            well_name = row[mapper[self.WELL_HEADER]]
-            well_aim = row[mapper[self.AIM_HEADER]].split('.')[1]
-            well, created = Well.objects.get_or_create(
+            well_name = row[self.WELL_HEADER]
+            well_aim = row[self.AIM_HEADER].split('.')[1]
+            well, created = models.Well.objects.get_or_create(
                 name=well_name, aim=well_aim, rig=rig, pad=pad,
                 drilling_schedule=self,
             )
             if created:
                 well.save()
 
-            opertion_name = row[mapper[self.OPERATION_HEADER]]
-            operation_start_date_plain = row[mapper[self.START_DATE_HEADER]]
+            opertion_name = row[self.OPERATION_HEADER]
+            operation_start_date_plain = row[self.START_DATE_HEADER]
             operation_start_date = datetime.strptime(
                 operation_start_date_plain, '%m/%d/%y',
             )
-            operation_end_date_plain = row[mapper[self.END_DATE_HEADER]]
+            operation_end_date_plain = row[self.END_DATE_HEADER]
             operation_end_date = datetime.strptime(
                 operation_end_date_plain, '%m/%d/%y',
             )
-            operation_meters_drilled = float(
-                row[mapper[self.METERS_DRILLED_HEADER]]
-            )
-            operation, created = Operation.objects.get_or_create(
+            operation_meters_drilled = row[self.METERS_DRILLED_HEADER]
+            operation, created = models.Operation.objects.get_or_create(
                 name=opertion_name, start_date=operation_start_date,
                 end_date=operation_end_date,
                 meters_drilled=operation_meters_drilled, well=well,
@@ -96,15 +89,17 @@ class CSVToInstance:
             if created:
                 operation.save()
 
-    def __switch_to_converted__(self):
+    def __switch_to_converted__(self) -> None:
         self.converted = True
         self.save()
         pass
 
-    def convert_to_instances(self):
+    def convert_to_instances(self) -> None:
         if self.converted is True:
             pass
-        csv_reader = self.__open_csv__()
-        mapper = self.__make_mapper__(csv_reader)
-        self.__row_to_instances__(mapper=mapper, csv_reader=csv_reader)
+        with open(self.imported_schedule.path, newline='') as csv_file:
+            csv_reader = csv.DictReader(
+                csv_file, dialect='excel', delimiter=';',
+            )
+            self.__row_to_instances__(csv_reader=csv_reader)
         self.__switch_to_converted__()

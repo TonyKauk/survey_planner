@@ -1,6 +1,6 @@
 from django.db import models
 
-from csv_converter import CSVToInstance
+from .csv_converter import CSVToInstance
 
 
 class DrillingSchedule(models.Model, CSVToInstance):
