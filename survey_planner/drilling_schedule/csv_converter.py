@@ -90,12 +90,12 @@ class CSVToInstance:
                 operation.save()
 
     def __switch_to_converted__(self) -> None:
-        self.converted = True
+        self.is_converted = True
         self.save()
         pass
 
     def convert_to_instances(self) -> None:
-        if self.converted is True:
+        if self.is_converted is True:
             pass
         with open(self.imported_schedule.path, newline='') as csv_file:
             csv_reader = csv.DictReader(

@@ -6,7 +6,7 @@ from .csv_converter import CSVToInstance
 class DrillingSchedule(models.Model, CSVToInstance):
     imported_schedule = models.FileField(upload_to='drilling_schedules/')
     version = models.CharField(max_length=20)
-    converted = models.BooleanField(default=False)
+    is_converted = models.BooleanField(default=False)
 
 
 class Rig(models.Model):

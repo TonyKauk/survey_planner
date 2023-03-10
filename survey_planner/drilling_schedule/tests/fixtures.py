@@ -15,8 +15,8 @@ class DrillingScheduleFixture(TestCase):
             settings.BASE_DIR,
             'media/for_testing/Drill_55_0_CSV.csv',
         )
-        good_schedule_object = DrillingSchedule.objects.create(
+        cls.good_schedule_object = DrillingSchedule.objects.create(
             imported_schedule=schedule_file_path, version=schedule_version,
         )
 
-        good_schedule_object.convert_to_instances()
+        cls.good_schedule_object.convert_to_instances()
