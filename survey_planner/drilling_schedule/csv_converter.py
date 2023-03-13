@@ -5,6 +5,9 @@ from drilling_schedule import models
 
 
 class CSVToInstance:
+    """Class to convert csv rows to objects."""
+
+    # Specify names of columns with corresponding data
     OPERATION_HEADER: str = 'Название работы'
     START_DATE_HEADER: str = 'Начало'
     END_DATE_HEADER: str = 'Окончание'
@@ -13,6 +16,8 @@ class CSVToInstance:
     WELL_HEADER: str = '№ скв. (WBS)'
     RIG_PAD_HEADER: str = 'БУ, Куст'
 
+    # Specify the beggining of value for columns that are unacceptable,
+    # such rows will be ignored while converting to objects
     EXCESSIVE_ROWS: dict = {
         OPERATION_HEADER: (
             'Complete 208 wells', 'Finish drilling', 'MDT',
@@ -24,6 +29,7 @@ class CSVToInstance:
     }
 
     def __filter_rows__(self, row: list[str]) -> bool:
+        """Returns True if value is unaccetable."""
         for column in self.EXCESSIVE_ROWS:
             if (row[column].startswith(self.EXCESSIVE_ROWS[column]) or
                     row[self.RIG_PAD_HEADER] == ''):
@@ -35,12 +41,14 @@ class CSVToInstance:
         return False
 
     def __format_meters_drilled__(self, meters_drilled: str) -> float:
+        """Turns string values of meters drilled to floats."""
         if meters_drilled == '':
             meters_drilled = '0.0'
         meters_drilled = float(meters_drilled.replace(',', '.'))
         return meters_drilled
 
     def __row_to_instances__(self, csv_reader: csv.DictReader) -> None:
+        """Converts each row to a number of instances."""
         for row in csv_reader:
             if self.__filter_rows__(row):
                 continue
@@ -90,16 +98,19 @@ class CSVToInstance:
                 operation.save()
 
     def __switch_to_converted__(self) -> None:
+        """Switches the is_converted attribute to True after convertion."""
         self.is_converted = True
         self.save()
         pass
 
-    def convert_to_instances(self) -> None:
+    def convert_to_instances(self) -> str:
+        """Main function converting csv file to instances."""
         if self.is_converted is True:
-            pass
+            return 'Have already been converted'
         with open(self.imported_schedule.path, newline='') as csv_file:
             csv_reader = csv.DictReader(
                 csv_file, dialect='excel', delimiter=';',
             )
             self.__row_to_instances__(csv_reader=csv_reader)
         self.__switch_to_converted__()
+        return 'Converted successfully'
