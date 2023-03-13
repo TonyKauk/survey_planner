@@ -72,8 +72,11 @@ class CSVToInstance:
             well_name = row[self.WELL_HEADER]
             well_aim = row[self.AIM_HEADER].split('.')[1]
             well, created = models.Well.objects.get_or_create(
-                name=well_name, aim=well_aim, rig=rig, pad=pad,
-                drilling_schedule=self,
+                name=well_name,
+                defaults={
+                    'aim': well_aim, 'rig': rig, 'pad': pad,
+                    'drilling_schedule': self,
+                }
             )
             if created:
                 well.save()

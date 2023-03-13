@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
@@ -19,7 +19,7 @@ class DrillingScheduleViewSet(mixins.CreateRetrieveListModelViewSet):
         return Response({'result': result}, status=status.HTTP_200_OK)
 
 
-class OperationViewSet(mixins.RetrieveListModelViewSet):
+class OperationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.OperationSerializer
 
     def get_queryset(self):
